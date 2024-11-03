@@ -1,0 +1,3728 @@
+prefix,middle,suffix,completion,label
+"import { useTranslation } from 'react-i18next'
+import { toast } from 'react-toastify'
+
+import { useAuth } from '@/auth'
+import { useCheckoutMutation } from '@/shared/api/paymentsQuery'
+import { useGetProductsQuery } from '@/shared/api/productsQuery'
+import Skeleton from '@/shared/components/skeleton/Skeleton'
+import LoadingWrapper from '@/shared/components/wrapper/LoadingWrapper'
+import { PageWrapper } from '@/shared/components/wrapper/PageWrapper'
+import { IProduct } from '@/shared/model/products'
+
+import { ProductCard } from './components/ProductCard'
+import { ProductsWrapper } from './productsElements'
+import useDimBreakpoints from '@/shared/utils/useDimBreakpoints'
+
+const Products = () => {
+  const { t } = useTranslation()
+  const auth = useAuth()
+  const { md } = useDimBreakpoints()
+  const { data: products, isLoading } = useGetProductsQuery('pl')
+  const { mutateAsync: checkoutMutation } = useCheckoutMutation()
+
+  const handleCheckout = (productId: string) => {
+    if (!auth.decodedUser) throw new Error('No user')
+    return toast.promise(
+      checkoutMutation({
+        customerId: auth.decodedUser?.id,
+        productId,
+        paymentMethodTypes: ['card'],
+      }).then((res) => {
+        window.location.href = res.url
+      }),
+      {
+        pending: t('products.toast.pending'),
+        success: t('products.toast.success'),
+        error: t('products.toast.checkoutErr'),
+      },
+    )
+  }
+
+  if (isLoading || !products) {
+    return (
+      <LoadingWrapper>
+        <Skeleton
+          repeat={1}
+          fullWidth
+        />
+        <Skeleton",          height={md ? 500 : 300},"          width={md ? 300 : 1000}
+        />
+      </LoadingWrapper>
+    )
+  }
+
+  return (
+    <PageWrapper>
+      <h1 className='page-wrapper-gradient'>{t('products.title')}</h1>
+      <ProductsWrapper>
+        {products.map((product: IProduct, idx: number) => {
+          return (
+            <ProductCard
+              key={idx}
+              index={idx}
+              name={product.name}
+              description={product.shortDescription}
+              price={product.prize}
+              onCheckout={handleCheckout}
+            />
+          )
+        })}
+      </ProductsWrapper>
+    </PageWrapper>
+  )
+}
+
+export default Products
+",_wrapper>,0
+"import { Link } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
+import { AiFillProduct } from 'react-icons/ai'
+import { CgProfile } from 'react-icons/cg'
+import { FaSignOutAlt } from 'react-icons/fa'
+import { GrLicense } from 'react-icons/gr'
+
+import { useAuth } from '@/auth'
+import { router } from '@/main'
+
+import LogoText from '@assets/logo_text.webp'
+
+const variants = {
+  open: {
+    transition: { staggerChildren: 0.07, delayChildren: 0.2 },
+  },
+  closed: {
+    transition: { staggerChildren: 0.05, staggerDirection: -1 },
+  },
+}
+
+const itemVariants = {
+  open: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      y: { stiffness: 1000, velocity: -100 },
+    },
+  },
+  closed: {
+    y: 50,
+    opacity: 0,
+    transition: {
+      y: { stiffness: 1000 },
+    },
+  },
+}
+",const logoVariants = {,"  open: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      delay: 0.3,
+      y: { stiffness: 1000, velocity: -100 },
+    },
+  },
+  closed: {
+    y: 50,
+    opacity: 0,
+    transition: {
+      y: { stiffness: 1000 },
+    },
+  },
+}
+
+export const NavbarNavigation = ({ toggle }: { toggle: (isOpen: boolean) => void }) => {
+  const { t } = useTranslation()
+  const { logout } = useAuth()
+
+  return (
+    <>
+      <motion.div
+        className='navbar-logo'
+        variants={logoVariants}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => {
+          router.navigate({ to: '/' })
+          toggle(false)
+        }}
+      >
+        <img
+          src={LogoText}
+          alt='logo'
+        />
+      </motion.div>
+      <motion.ul variants={variants}>
+        <motion.li
+          variants={itemVariants}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => toggle(false)}
+        >
+          <AiFillProduct />
+          <Link to='/products'>{t('navbar.products')}</Link>
+        </motion.li>
+        <motion.li
+          variants={itemVariants}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => toggle(false)}
+        >
+          <GrLicense />
+          <Link to='/myProducts'>{t('navbar.myProducts')}</Link>
+        </motion.li>
+        <motion.li
+          variants={itemVariants}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => toggle(false)}
+        >
+          <CgProfile />
+          <Link to='/profile'>{t('navbar.profile')}</Link>
+        </motion.li>
+        <motion.li
+          variants={itemVariants}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => toggle(false)}
+        >
+          <FaSignOutAlt />
+          <div
+            onClick={() => {
+              toggle(false)
+              logout()
+            }}
+            aria-hidden='true'
+          >
+            {t('navbar.signOut')}
+          </div>
+        </motion.li>
+      </motion.ul>
+    </>
+  )
+}
+",const itemVariants2 = {,1
+"import {
+  arrow,
+  flip,
+  FloatingPortal,
+  shift,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
+import { useRef, useState } from 'react'
+
+import { TooltipArrow, TooltipContent, TooltipWrapper } from './tooltipElements'
+
+export interface ITooltip {
+  children: JSX.Element[] | JSX.Element
+  content: string
+  placement?:
+    | 'top'
+    | 'right'
+    | 'bottom'
+    | 'left'
+    | 'top-start'
+    | 'top-end'
+    | 'right-start'
+    | 'right-end'
+    | 'bottom-start'
+    | 'bottom-end'
+    | 'left-start'
+    | 'left-end'
+}
+
+const Tooltip = ({ children, content, placement }: ITooltip) => {
+  const arrowRef = useRef(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    middleware: [
+      arrow({
+        element: arrowRef,
+      }),
+      flip(),
+      shift(),
+    ],
+    placement,
+  })
+
+  const hover = useHover(context, {
+    delay: {
+      open: 200,
+      close: 100,
+    },
+  })
+
+  const role = useRole(context, {
+    role: 'tooltip',
+  })
+
+  const focus = useFocus(context)
+
+  const dismiss = useDismiss(context)
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, role, focus, dismiss])
+
+  return (
+    <>
+      <TooltipWrapper
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        {children}
+      </TooltipWrapper>
+      {isOpen && (
+        <FloatingPortal>
+          <TooltipContent
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {content}
+            <TooltipArrow
+              ref={arrowRef}",              context={context},"            />
+          </TooltipContent>
+        </FloatingPortal>
+      )}
+    </>
+  )
+}
+
+export default Tooltip
+",},0
+"import { useEffect, useState } from 'react'
+
+import { commonTheme } from '../theme/commonTheme'
+
+const useDimBreakpoints = () => {
+  const [matches, setMatches] = useState({
+    xs: false,
+    s: false,
+    md: false,
+    lg: false,
+    xl: false,
+    xxl: false,
+    xxxl: false,
+  })
+
+  useEffect(() => {
+    const breakpoints = commonTheme.breakpoint
+    const mediaQueries = {
+      xs: window.matchMedia(`(max-width: ${breakpoints.xs})`),
+      s: window.matchMedia(`(max-width: ${breakpoints.s})`),
+      md: window.matchMedia(`(max-width: ${breakpoints.md})`),
+      lg: window.matchMedia(`(max-width: ${breakpoints.lg})`),
+      xl: window.matchMedia(`(max-width: ${breakpoints.xl})`),
+      xxl: window.matchMedia(`(max-width: ${breakpoints.xxl})`),
+      xxxl: window.matchMedia(`(max-width: ${breakpoints.xxxl})`),
+    }
+
+    const handleMediaQueryChange = () => {
+      setMatches({
+        xs: mediaQueries.xs.matches,
+        s: mediaQueries.s.matches,
+        md: mediaQueries.md.matches,
+        lg: mediaQueries.lg.matches,
+        xl: mediaQueries.xl.matches,
+        xxl: mediaQueries.xxl.matches,","        xxxl: mediaQueries.xxxl.matches,","      })
+    }
+
+    handleMediaQueryChange()
+
+    for (const mq of Object.values(mediaQueries)) {
+      if (mq.addEventListener) {
+        mq.addEventListener('change', handleMediaQueryChange)
+      } else {
+        mq.addListener(handleMediaQueryChange)
+      }
+    }
+
+    return () => {
+      for (const mq of Object.values(mediaQueries)) {
+        if (mq.removeEventListener) {
+          mq.removeEventListener('change', handleMediaQueryChange)
+        } else {
+          mq.removeListener(handleMediaQueryChange)
+        }
+      }
+    }
+  }, [])
+
+  return matches
+}
+
+export default useDimBreakpoints
+","xxxl: mediaQueries.xxxl.matches,",1
+"/* eslint-disable eslint-comments/no-use */
+import { ChangeEvent } from 'react'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper } from './InputFile.styled'
+
+interface InputFileProps {
+  id: string
+  onChange: (v: FileList) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (v: any) => void
+  onBlur?: () => void
+  error?: string
+  label?: string
+  disabled?: boolean
+  size?: Size
+  fullWidth?: boolean
+  required?: boolean
+  multiple?: boolean
+  accept?: string
+}
+
+const InputFile = ({
+  id,
+  onChange,
+  onClick,
+  onBlur,
+  error,
+  label,
+  disabled,
+  size = 'md',
+  fullWidth = false,
+  required,
+  multiple,
+  accept,
+}: InputFileProps) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    event.target.files && onChange(event.target.files)
+    //TODO request to post file to server
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    onClick?.(event.target)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  return (
+    <InputWrapper $fullWidth={fullWidth}>
+      {label && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {required && '*'}
+        </InputLabel>
+      )}
+      <Input
+        id={id}
+        type='file'
+        onChange={handleChange}
+        onClick={handleClick}",        onBlur={handleBlur},"        disabled={disabled}
+        multiple={multiple}
+        accept={accept}
+        $size={size}
+      />
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputFile
+",},0
+"import { AsYouType } from 'libphonenumber-js'
+import { ChangeEvent, useRef } from 'react'
+import type { AriaTextFieldProps } from 'react-aria'
+import { useTextField } from 'react-aria'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputLabelFloat, InputWrapper } from './InputText.styled'
+
+type InputType = 'text' | 'password' | 'email' | 'number' | 'tel'
+
+interface InputTextProps extends AriaTextFieldProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (e: any) => void
+  error?: string
+  size?: Size
+  type?: InputType
+  fullWidth?: boolean
+  floatLabel?: boolean
+}
+
+const InputText = (props: InputTextProps) => {
+  const ref = useRef(null)
+  const { labelProps, inputProps } = useTextField(props, ref)
+
+  const {
+    id,
+    label,
+    type,
+    onChange,
+    size = 'md',
+    fullWidth = false,
+    isRequired = false,
+    floatLabel = false,
+    isDisabled = false,
+    placeholder,
+    error,
+  } = props
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (type === 'tel') {
+      const formattedPhoneNumber = new AsYouType().input(event.target.value)
+      onChange?.(formattedPhoneNumber)
+    } else {
+      onChange?.(event.target.value)
+    }
+  }
+
+  return (
+    <InputWrapper
+      $fullWidth={fullWidth}
+      $floatLabel={floatLabel}
+      $size={size}
+    >
+      {label && !floatLabel && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+          {...labelProps}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabel>
+      )}
+      <Input
+        ref={ref}",        aria-labelledby={id},"        {...inputProps}
+        placeholder={floatLabel ? '' : placeholder}
+        onChange={handleChange}
+        $disabled={isDisabled}
+        $floatLabel={floatLabel}
+        $size={size}
+      />
+      {label && floatLabel && (
+        <InputLabelFloat
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabelFloat>
+      )}
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputText
+",},0
+"import { Link } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CgProfile } from 'react-icons/cg'
+
+import getTheme from '@/shared/utils/getTheme'
+
+import LogoText from '@assets/logo_text.webp'
+import Menu from './menu/Menu'
+import { NavbarLogo, NavbarMenu, NavbarWrapper } from './NavbarElements'
+
+const Navbar = () => {
+  const { t } = useTranslation()
+  const [isMenuOpen, setMenuOpen] = useState<boolean>(false)
+  const theme = getTheme()
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [window.location.href])
+
+  return (
+    <>
+      <Menu
+        isOpen={isMenuOpen}
+        theme={theme}
+        setMenuOpen={setMenuOpen}
+      />
+      <NavbarWrapper>
+        <NavbarLogo to='/'>
+          <img
+            src={LogoText}
+            alt='logo'
+          />
+        </NavbarLogo>
+        <NavbarMenu>
+          <Link to='/products'>{t('navbar.products')}</Link>
+          <Link to='/myProducts'>{t('navbar.myProducts')}</Link>
+          <motion.span whileTap={{ scale: 0.95 }}>
+            <CgProfile onClick={() => setMenuOpen((prev) => !prev)} />
+          </motion.span>
+        </NavbarMenu>
+      </NavbarWrapper>
+    </>
+  )
+}
+",export default Navbar,,const { navbar } = useState<NavbarWrapper>,0
+"/* eslint-disable eslint-comments/no-use */
+import { ChangeEvent } from 'react'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper } from './InputFile.styled'
+
+interface InputFileProps {
+  id: string
+  onChange: (v: FileList) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (v: any) => void
+  onBlur?: () => void
+  error?: string
+  label?: string
+  disabled?: boolean
+  size?: Size
+  fullWidth?: boolean
+  required?: boolean
+  multiple?: boolean
+  accept?: string
+}
+
+const InputFile = ({
+  id,
+  onChange,
+  onClick,
+  onBlur,
+  error,
+  label,
+  disabled,
+  size = 'md',
+  fullWidth = false,
+  required,
+  multiple,
+  accept,
+}: InputFileProps) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    event.target.files && onChange(event.target.files)
+    //TODO request to post file to server
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    onClick?.(event.target)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  return (
+    <InputWrapper $fullWidth={fullWidth}>
+      {label && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {required && '*'}
+        </InputLabel>
+      )}
+      <Input
+        id={id}
+        type='file'
+        onChange={handleChange}
+        onClick={handleClick}
+        onBlur={handleBlur}",        disabled={disabled},"        multiple={multiple}
+        accept={accept}
+        $size={size}
+      />
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputFile
+",},0
+"import { useRef } from 'react'
+import { useButton } from 'react-aria'
+import type { ButtonProps } from 'react-aria-components'
+
+import { Size } from '@/shared/model/common'
+
+import { ButtonStyled } from './buttonElements'
+
+type ButtonAnimations = 'hover' | 'tap' | 'gradient'
+
+export interface IButton extends ButtonProps {
+  label: string
+  btnType?: 'primary' | 'secondary'
+  isDisabled?: boolean
+  fullWidth?: boolean
+  onClick?: () => void
+  size?: Size
+  iconStart?: JSX.Element | JSX.Element[]
+  iconEnd?: JSX.Element | JSX.Element[]
+  pill?: number
+  animations?: ButtonAnimations[]
+}
+
+const Button = (props: IButton) => {
+  const ref = useRef(null)
+  const { buttonProps } = useButton(props, ref)
+
+  const {
+    label,
+    btnType = 'primary',
+    isDisabled = false,
+    fullWidth = false,
+    onClick,
+    size = 'md',
+    iconStart,
+    iconEnd,
+    pill = 1,
+    animations,
+  } = props
+
+  return (
+    //@ts-expect-error Conflict of interfaces
+    <ButtonStyled
+      ref={ref}
+      btnType={btnType}
+      onClick={onClick}
+      fullWidth={fullWidth}
+      size={size}
+      disabled={isDisabled}",      isDisabled={isDisabled},"      pill={pill}
+      animations={animations}
+      {...buttonProps}
+      layout
+      animate={
+        !isDisabled && animations?.includes('gradient') ?
+          { backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }
+        : {}
+      }
+      transition={
+        !isDisabled && animations?.includes('gradient') ?
+          {
+            backgroundPosition: { duration: 8, ease: 'easeInOut', repeat: Infinity },
+          }
+        : {}
+      }
+      whileHover={
+        !isDisabled && animations?.includes('hover') ?
+          { scale: 0.95, transition: { duration: 0.1, repeat: 0, ease: 'easeInOut' } }
+        : {}
+      }
+      whileTap={
+        !isDisabled && animations?.includes('tap') ?
+          { scale: 0.9, transition: { duration: 0.1, repeat: 0, ease: 'easeInOut' } }
+        : {}
+      }
+    >
+      {iconStart}
+      {label}
+      {iconEnd}
+    </ButtonStyled>
+  )
+}
+
+export default Button
+",{disabled},1
+"import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper, Span } from './InputRadio.styled'
+
+interface InputRadioProps {
+  id: string
+  name: string
+  label: string
+  value?: string
+  required?: boolean
+  isChecked?: boolean
+  disabled?: boolean
+  size?: Size
+  error?: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+}
+
+const InputRadio = ({
+  id,
+  name,
+  value,
+  label,
+  required = false,
+  isChecked = false,
+  disabled = false,
+  size = 'md',
+  error,
+  onChange,
+  onBlur,
+}: InputRadioProps) => {
+  const handleChange = () => {
+    value && onChange(value)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  return (
+    <InputWrapper>
+      <Input
+        type='radio'
+        id={id}
+        name={name}
+        value={value}
+        checked={isChecked}",        onChange={handleChange},"        onBlur={handleBlur}
+        disabled={disabled}
+        $size={size}
+      />
+      <InputLabel
+        htmlFor={id}
+        $size={size}
+      >
+        <Span $size={size}>{label}</Span>
+        {required && '*'}
+      </InputLabel>
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputRadio
+",disabled={disabled},1
+"import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper, Span } from './InputRadio.styled'
+
+interface InputRadioProps {
+  id: string
+  name: string
+  label: string
+  value?: string
+  required?: boolean
+  isChecked?: boolean
+  disabled?: boolean
+  size?: Size
+  error?: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+}
+
+const InputRadio = ({
+  id,
+  name,
+  value,
+  label,
+  required = false,
+  isChecked = false,
+  disabled = false,
+  size = 'md',
+  error,
+  onChange,
+  onBlur,
+}: InputRadioProps) => {
+  const handleChange = () => {
+    value && onChange(value)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  return (
+    <InputWrapper>
+      <Input
+        type='radio'
+        id={id}
+        name={name}
+        value={value}
+        checked={isChecked}
+        onChange={handleChange}",        onBlur={handleBlur},"        disabled={disabled}
+        $size={size}
+      />
+      <InputLabel
+        htmlFor={id}
+        $size={size}
+      >
+        <Span $size={size}>{label}</Span>
+        {required && '*'}
+      </InputLabel>
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputRadio
+",onBlur={handleBlur},1
+"import { AsYouType } from 'libphonenumber-js'
+import { ChangeEvent, useRef } from 'react'
+import type { AriaTextFieldProps } from 'react-aria'
+import { useTextField } from 'react-aria'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputLabelFloat, InputWrapper } from './InputText.styled'
+
+type InputType = 'text' | 'password' | 'email' | 'number' | 'tel'
+
+interface InputTextProps extends AriaTextFieldProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (e: any) => void
+  error?: string
+  size?: Size
+  type?: InputType
+  fullWidth?: boolean
+  floatLabel?: boolean
+}
+
+const InputText = (props: InputTextProps) => {
+  const ref = useRef(null)
+  const { labelProps, inputProps } = useTextField(props, ref)
+
+  const {
+    id,
+    label,
+    type,
+    onChange,
+    size = 'md',
+    fullWidth = false,
+    isRequired = false,
+    floatLabel = false,
+    isDisabled = false,
+    placeholder,
+    error,
+  } = props
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (type === 'tel') {
+      const formattedPhoneNumber = new AsYouType().input(event.target.value)
+      onChange?.(formattedPhoneNumber)
+    } else {
+      onChange?.(event.target.value)
+    }
+  }
+
+  return (
+    <InputWrapper
+      $fullWidth={fullWidth}
+      $floatLabel={floatLabel}
+      $size={size}
+    >
+      {label && !floatLabel && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+          {...labelProps}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabel>
+      )}
+      <Input
+        ref={ref}
+        aria-labelledby={id}
+        {...inputProps}
+        placeholder={floatLabel ? '' : placeholder}
+        onChange={handleChange}
+        $disabled={isDisabled}
+        $floatLabel={floatLabel}
+        $size={size}
+      />
+      {label && floatLabel && (
+        <InputLabelFloat
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabelFloat>
+      )}",      <InputError>{error}</InputError>,"    </InputWrapper>
+  )
+}
+
+export default InputText
+",<InputWrapper,1
+"import { Link, useLocation } from '@tanstack/react-router'
+import { AnimatePresence, Variants } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
+
+import { useAuth } from '@/auth'
+import useTheme from '@/shared/utils/useTheme'
+
+import Switch from '../../switch/Switch'
+import Tooltip from '../../tooltip/Tooltip'
+import { MenuItem, MenuList, MenuWrapper } from './MenuElements'
+import { useEffect } from 'react'
+
+export interface IMenu {
+  isOpen: boolean
+  theme: 'light' | 'dark'
+  setMenuOpen: (isOpen: boolean) => void
+}
+
+const menuVariants: Variants = {
+  open: {
+    opacity: 1,
+    height: 180,
+    transition: {
+      type: 'spring',
+      stiffness: 200,
+      damping: 24,
+      staggerChildren: 0.1,
+    },
+  },
+  closed: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      duration: 0.4,
+      staggerChildren: 0.02,
+      staggerDirection: -1,
+    },
+  },
+}
+
+const Menu = ({ isOpen, setMenuOpen }: IMenu) => {
+  const { t } = useTranslation()
+  const { theme: currentTheme, updateTheme } = useTheme()
+  const { logout } = useAuth()
+  const location = useLocation()
+
+  const handleChangeTheme = (value: boolean) => {
+    // eslint-disable-next-line sonarjs/no-all-duplicated-branches
+    if (value) {
+      updateTheme('light') //TODO change to dark after dar mode implementation
+    } else {
+      updateTheme('light')
+    }
+  }
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <MenuWrapper
+          variants={menuVariants}
+          initial='closed'
+          exit='closed'
+          animate={isOpen ? 'open' : 'closed'}
+        >
+          <MenuList>
+            <MenuItem>
+              <Link
+                to='/profile'
+                onClick={() => setMenuOpen(false)}
+              >
+                {t('navbar.profile')}
+              </Link>
+            </MenuItem>
+            <MenuItem>
+              <Tooltip
+                content={t('common.soon')}
+                placement='left'
+              >
+                <Switch
+                  value={currentTheme === 'dark'}
+                  onChange={(value: boolean) => {
+                    handleChangeTheme(value)
+                  }}
+                  label={t('navbar.darkMode')}
+                  labelPosition='top'
+                />
+              </Tooltip>
+            </MenuItem>
+            <MenuItem
+              onClick={() => {",                logout(),"                setMenuOpen(false)
+              }}
+            >
+              {t('navbar.signOut')}
+            </MenuItem>
+          </MenuList>
+        </MenuWrapper>
+      )}
+    </AnimatePresence>
+  )
+}
+
+export default Menu
+",},0
+"import { useTranslation } from 'react-i18next'
+
+import Button from '@/shared/components/button/Button'
+
+import sokarLogo from '../../../assets/sokar_logo.png'
+import { ProductCardContent, ProductCardImage, ProductCardWrapper } from './productCardElements'
+
+export interface IProductCard {
+  name: string
+  description: string
+  price: number
+  onCheckout: (productId: string) => Promise<void>
+  index: number
+}
+
+export const ProductCard = ({ name, description, price, onCheckout, index }: IProductCard) => {
+  const { t } = useTranslation()
+
+  return (
+    <ProductCardWrapper
+      initial={{
+        opacity: 0,
+        x: index % 2 === 0 ? 50 : -50,
+      }}
+      whileInView={{
+        opacity: 1,
+        x: 0,
+        transition: {
+          duration: 0.6,
+        },
+      }}
+      viewport={{ once: true }}
+    >",      <ProductCardImage>,"        <img
+          src={sokarLogo}
+          alt='sokar logo'
+        />
+      </ProductCardImage>
+      <ProductCardContent>
+        <span className='product-card-text'>
+          <h1>{name}</h1>
+          <p>{description}</p>
+        </span>
+        <span className='product-card-footer'>
+          <p>
+            {t('products.price')}: {price}
+          </p>
+          <Button
+            label={t('products.buy')}
+            size='md'
+            onClick={() => onCheckout(name)}
+            animations={['tap', 'hover', 'gradient']}
+          />
+        </span>
+      </ProductCardContent>
+    </ProductCardWrapper>
+  )
+}
+",>,0
+"import { Link, useLocation } from '@tanstack/react-router'
+import { AnimatePresence, Variants } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
+
+import { useAuth } from '@/auth'
+import useTheme from '@/shared/utils/useTheme'
+
+import Switch from '../../switch/Switch'
+import Tooltip from '../../tooltip/Tooltip'
+import { MenuItem, MenuList, MenuWrapper } from './MenuElements'
+import { useEffect } from 'react'
+
+export interface IMenu {
+  isOpen: boolean
+  theme: 'light' | 'dark'
+  setMenuOpen: (isOpen: boolean) => void
+}
+
+const menuVariants: Variants = {
+  open: {
+    opacity: 1,
+    height: 180,
+    transition: {
+      type: 'spring',
+      stiffness: 200,
+      damping: 24,
+      staggerChildren: 0.1,
+    },
+  },
+  closed: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      duration: 0.4,
+      staggerChildren: 0.02,
+      staggerDirection: -1,
+    },
+  },
+}
+
+const Menu = ({ isOpen, setMenuOpen }: IMenu) => {
+  const { t } = useTranslation()
+  const { theme: currentTheme, updateTheme } = useTheme()
+  const { logout } = useAuth()
+  const location = useLocation()
+
+  const handleChangeTheme = (value: boolean) => {
+    // eslint-disable-next-line sonarjs/no-all-duplicated-branches
+    if (value) {
+      updateTheme('light') //TODO change to dark after dar mode implementation
+    } else {
+      updateTheme('light')
+    }
+  }
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <MenuWrapper
+          variants={menuVariants}
+          initial='closed'
+          exit='closed'
+          animate={isOpen ? 'open' : 'closed'}
+        >
+          <MenuList>
+            <MenuItem>
+              <Link
+                to='/profile'
+                onClick={() => setMenuOpen(false)}
+              >
+                {t('navbar.profile')}
+              </Link>
+            </MenuItem>
+            <MenuItem>
+              <Tooltip
+                content={t('common.soon')}
+                placement='left'
+              >",                <Switch,"                  value={currentTheme === 'dark'}
+                  onChange={(value: boolean) => {
+                    handleChangeTheme(value)
+                  }}
+                  label={t('navbar.darkMode')}
+                  labelPosition='top'
+                />
+              </Tooltip>
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                logout()
+                setMenuOpen(false)
+              }}
+            >
+              {t('navbar.signOut')}
+            </MenuItem>
+          </MenuList>
+        </MenuWrapper>
+      )}
+    </AnimatePresence>
+  )
+}
+
+export default Menu
+",{t('navbar.signOut')},0
+"import {
+  arrow,
+  flip,
+  FloatingPortal,
+  shift,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
+import { useRef, useState } from 'react'
+
+import { TooltipArrow, TooltipContent, TooltipWrapper } from './tooltipElements'
+
+export interface ITooltip {
+  children: JSX.Element[] | JSX.Element
+  content: string
+  placement?:
+    | 'top'
+    | 'right'
+    | 'bottom'
+    | 'left'
+    | 'top-start'
+    | 'top-end'
+    | 'right-start'
+    | 'right-end'
+    | 'bottom-start'
+    | 'bottom-end'
+    | 'left-start'
+    | 'left-end'
+}
+
+const Tooltip = ({ children, content, placement }: ITooltip) => {
+  const arrowRef = useRef(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    middleware: [
+      arrow({
+        element: arrowRef,
+      }),
+      flip(),
+      shift(),
+    ],
+    placement,
+  })
+
+  const hover = useHover(context, {
+    delay: {
+      open: 200,
+      close: 100,
+    },
+  })
+
+  const role = useRole(context, {
+    role: 'tooltip',
+  })
+
+  const focus = useFocus(context)
+
+  const dismiss = useDismiss(context)
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, role, focus, dismiss])
+
+  return (
+    <>
+      <TooltipWrapper
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        {children}
+      </TooltipWrapper>
+      {isOpen && (
+        <FloatingPortal>
+          <TooltipContent
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {content}",            <TooltipArrow,"              ref={arrowRef}
+              context={context}
+            />
+          </TooltipContent>
+        </FloatingPortal>
+      )}
+    </>
+  )
+}
+
+export default Tooltip
+",{placement},0
+"import { AnimatePresence } from 'framer-motion'
+import { useEffect, useRef } from 'react'
+import type { AriaDialogProps } from 'react-aria'
+import { useDialog } from 'react-aria'
+import { useTranslation } from 'react-i18next'
+
+import Button from '../button/Button'
+import {
+  DialogBackdrop,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+  DialogWrapper,
+} from './DialogElements'
+
+export interface IDialog extends AriaDialogProps {
+  title?: JSX.Element | string
+  children: JSX.Element
+  footer?: JSX.Element
+  isVisible?: boolean
+  footerDefaultButtonTitle?: string
+  onClose?: (payload?: any) => void
+}
+
+const Dialog = ({
+  title,
+  children,
+  footer,
+  isVisible,
+  footerDefaultButtonTitle = 'Common:ui.close',
+  onClose,
+  ...props
+}: IDialog) => {
+  const { t } = useTranslation()
+
+  const ref = useRef<HTMLDivElement>(null)
+  const { dialogProps, titleProps } = useDialog(props, ref)
+
+  useEffect(() => {
+    if (isVisible) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isVisible])
+
+  const handleClose = () => {
+    onClose?.()
+  }
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <DialogBackdrop>
+          <DialogWrapper
+            ref={ref}
+            {...dialogProps}
+          >
+            <DialogTitle>
+              <h2 {...titleProps}>{title}</h2>
+            </DialogTitle>
+            <DialogContent>{children}</DialogContent>
+            <DialogFooter>
+              {footer}
+              <Button
+                onClick={handleClose}",                label={t(footerDefaultButtonTitle)},"              />
+            </DialogFooter>
+          </DialogWrapper>
+        </DialogBackdrop>
+      )}
+    </AnimatePresence>
+  )
+}
+
+export default Dialog
+",>,0
+"import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { FaFacebookSquare } from 'react-icons/fa'
+import { FaLinkedin } from 'react-icons/fa6'
+
+import logoText from '@assets/logo_text.webp'
+import { FooterBlock, FooterCopyright, FooterWrapper } from './FooterElements'
+import { Wave } from './Wave'
+
+const Footer = () => {
+  const { t } = useTranslation()
+  const version = import.meta.env.VITE_APP_VERSION
+
+  return (
+    <FooterWrapper>
+      <Wave />
+      <FooterBlock>
+        <div className='col1'>
+          <img
+            src={logoText}
+            alt='logoFooter'
+          />
+          <p></p>
+          <p>
+            
+            <br />
+            
+          </p>
+          <p>
+            VAT-ID (NIP):
+            <br />
+            REGON:
+            <br />
+            KRS:
+          </p>
+        </div>
+
+        <div className='col2'>
+          <h2>{t('footer.followUs')}</h2>
+          <a
+            href=''
+            target='_blank'
+            rel='noreferrer noopener'
+          >",            <FaFacebookSquare />,"          </a>
+          <a
+            href=''
+            target='_blank'
+            rel='noreferrer noopener'
+          >
+            <FaLinkedin />
+          </a>
+        </div>
+
+        <div className='col3'>
+          <a href='tel:'>{t('footer.phoneNumber')}</a>
+          <a href='mailto:'>{t('footer.email')}</a>
+          <Link>{t('footer.terms')}</Link>
+          <Link>{t('footer.sitemap')}</Link>
+        </div>
+      </FooterBlock>
+      {version && <FooterCopyright>ver. {version}</FooterCopyright>}
+      <FooterCopyright>© 2024 All right reserved.</FooterCopyright>
+    </FooterWrapper>
+  )
+}
+
+export default Footer
+",>,0
+"import { ReactNode, useCallback, useContext, useEffect, useState } from 'react'
+
+import AuthContext from './AuthContext'
+import { router } from './main'
+import { ICustomer } from './shared/model/customers'
+import { AUTH_LS } from './config'
+import useAsyncState from './shared/utils/useAsyncState'
+
+export interface IAuth {
+  email: string
+  sessionToken: string
+  refreshToken: string
+}
+
+export const getStoredUser = () => {
+  const _user = localStorage.getItem(AUTH_LS)
+  if (_user) {
+    return JSON.parse(_user) as IAuth
+  }
+  return null
+}
+
+export const setStoredUser = (user: IAuth | null) => {
+  if (user) {
+    localStorage.setItem(AUTH_LS, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(AUTH_LS)
+  }
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useAsyncState<IAuth | null>(getStoredUser())
+  const [decodedUser, setDecodedUser] = useState<ICustomer | undefined>()
+  const isAuthenticated = !!user?.sessionToken
+
+  const logout = useCallback(() => {
+    setStoredUser(null)
+    setUser(null)
+    router.invalidate().finally(() => {
+      router.navigate({ to: '/login' })
+    })
+  }, [])
+
+  const login = useCallback(async (_user: IAuth) => {
+    await setUser(_user)
+    setStoredUser(_user)
+  }, [])
+
+  const updateUser = useCallback((_user: ICustomer) => {
+    setDecodedUser(_user as ICustomer)
+  }, [])
+
+  useEffect(() => {
+    const _user = getStoredUser()
+    if (_user) {
+      setUser(_user)
+    }
+  }, [])
+
+  return (",    <AuthContext.Provider,"      value={{
+        isAuthenticated: isAuthenticated,
+        user,
+        login,
+        logout,
+        updateUser,
+        decodedUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+",{,0
+"import { useEffect, useState } from 'react'
+
+import { commonTheme } from '../theme/commonTheme'
+
+const useDimBreakpoints = () => {
+  const [matches, setMatches] = useState({
+    xs: false,
+    s: false,
+    md: false,
+    lg: false,
+    xl: false,
+    xxl: false,
+    xxxl: false,
+  })
+
+  useEffect(() => {
+    const breakpoints = commonTheme.breakpoint
+    const mediaQueries = {
+      xs: window.matchMedia(`(max-width: ${breakpoints.xs})`),
+      s: window.matchMedia(`(max-width: ${breakpoints.s})`),
+      md: window.matchMedia(`(max-width: ${breakpoints.md})`),
+      lg: window.matchMedia(`(max-width: ${breakpoints.lg})`),
+      xl: window.matchMedia(`(max-width: ${breakpoints.xl})`),
+      xxl: window.matchMedia(`(max-width: ${breakpoints.xxl})`),
+      xxxl: window.matchMedia(`(max-width: ${breakpoints.xxxl})`),
+    }
+
+    const handleMediaQueryChange = () => {
+      setMatches({
+        xs: mediaQueries.xs.matches,
+        s: mediaQueries.s.matches,
+        md: mediaQueries.md.matches,
+        lg: mediaQueries.lg.matches,
+        xl: mediaQueries.xl.matches,
+        xxl: mediaQueries.xxl.matches,
+        xxxl: mediaQueries.xxxl.matches,
+      })
+    }
+
+    handleMediaQueryChange()
+
+    for (const mq of Object.values(mediaQueries)) {
+      if (mq.addEventListener) {
+        mq.addEventListener('change', handleMediaQueryChange)
+      } else {
+        mq.addListener(handleMediaQueryChange)
+      }
+    }
+
+    return () => {
+      for (const mq of Object.values(mediaQueries)) {
+        if (mq.removeEventListener) {
+          mq.removeEventListener('change', handleMediaQueryChange)
+        } else {
+          mq.removeListener(handleMediaQueryChange)
+        }
+      }
+    }
+  }, [])
+
+  return matches
+}
+",export default useDimBreakpoints,,const useDimBreakpoints = () => {,0
+"import { Outlet } from '@tanstack/react-router'
+import { useCallback, useEffect, useState } from 'react'
+
+import Footer from './Footer'
+import { NavbarMobile } from './MobileNavbar/NavbarMobile'
+import NavbarMobileLogo from './MobileNavbar/NavbarMobileLogo'
+import Navbar from './Navbar'
+import { useGetUserProfile } from '@/shared/api/customersQuery'
+import { useAuth } from '@/auth'
+
+const Layout = () => {
+  const { updateUser } = useAuth()
+  const { data: customer, isError, isLoading } = useGetUserProfile()
+  const [width, setWidth] = useState<number>(window.innerWidth)
+
+  const handleWindowSizeChange = useCallback(() => {
+    setWidth(window.innerWidth)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowSizeChange)
+    return () => {
+      window.removeEventListener('resize', handleWindowSizeChange)
+    }
+  }, [handleWindowSizeChange])
+
+  const isMobile = width <= 1024
+
+  useEffect(() => {
+    if (!isLoading && !isError && customer) {
+      updateUser(customer)
+    }
+  }, [customer])
+
+  return (
+    <>
+      {isMobile && <NavbarMobileLogo />}
+      {!isMobile ?
+        <Navbar />
+      : <NavbarMobile />}
+      <Outlet />
+      <Footer />
+    </>
+  )
+}
+",export default Layout,,const layout = layout || {,0
+"import { useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { AiFillProduct } from 'react-icons/ai'
+import { CgProfile } from 'react-icons/cg'
+import { GrLicense } from 'react-icons/gr'
+
+import { useAuth } from '@/auth'
+import { router } from '@/main'
+import { PageWrapper } from '@/shared/components/wrapper/PageWrapper'
+
+import { HomeWrapper, MyProductsBlock, ProductsBlock, ProfileBlock } from './homeElements'
+
+const Home = () => {
+  const { t } = useTranslation()
+  const { decodedUser } = useAuth()
+  const navigate = useNavigate({ from: '/' })
+
+  return (
+    <PageWrapper>
+      <h1 className='page-wrapper-gradient'>
+        {t('home.title')}
+        {decodedUser?.firstName && ` ${decodedUser?.firstName}`}!
+      </h1>
+      <HomeWrapper>
+        <ProductsBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/products' })}
+          onHoverStart={() => router.preloadRoute({ to: '/products' })}
+        >
+          <div>
+            <h2>{t('home.products.title')}</h2>
+            <p>{t('home.products.desc')}</p>
+          </div>
+          <div className='home home-icon'>
+            <AiFillProduct />
+          </div>
+        </ProductsBlock>
+        <MyProductsBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/myProducts' })}
+          onHoverStart={() => router.preloadRoute({ to: '/myProducts' })}
+        >
+          <div>
+            <h2>{t('home.myProducts.title')}</h2>
+            <p>{t('home.myProducts.desc')}</p>
+          </div>
+          <div className='home home-icon'>
+            <GrLicense />
+          </div>
+        </MyProductsBlock>
+        <ProfileBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/profile' })}
+          onHoverStart={() => router.preloadRoute({ to: '/profile' })}
+        >
+          <div className='home home-bento-vertical'>
+            <h2>",              {t('home.profile.title')},"              {decodedUser?.companyName &&
+                decodedUser?.customerTag &&
+                `: ${decodedUser?.companyName} - ${decodedUser?.customerTag}`}
+            </h2>
+            <p>{t('home.profile.desc')}</p>
+          </div>
+          <div className='home home-icon home-bento-vertical'>
+            <CgProfile />
+          </div>
+        </ProfileBlock>
+      </HomeWrapper>
+    </PageWrapper>
+  )
+}
+
+export default Home
+",</h2>,1
+"import {
+  arrow,
+  flip,
+  FloatingPortal,
+  shift,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
+import { useRef, useState } from 'react'
+
+import { TooltipArrow, TooltipContent, TooltipWrapper } from './tooltipElements'
+
+export interface ITooltip {
+  children: JSX.Element[] | JSX.Element
+  content: string
+  placement?:
+    | 'top'
+    | 'right'
+    | 'bottom'
+    | 'left'
+    | 'top-start'
+    | 'top-end'
+    | 'right-start'
+    | 'right-end'
+    | 'bottom-start'
+    | 'bottom-end'
+    | 'left-start'
+    | 'left-end'
+}
+","const Tooltip = ({ children, content, placement }: ITooltip) => {","  const arrowRef = useRef(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    middleware: [
+      arrow({
+        element: arrowRef,
+      }),
+      flip(),
+      shift(),
+    ],
+    placement,
+  })
+
+  const hover = useHover(context, {
+    delay: {
+      open: 200,
+      close: 100,
+    },
+  })
+
+  const role = useRole(context, {
+    role: 'tooltip',
+  })
+
+  const focus = useFocus(context)
+
+  const dismiss = useDismiss(context)
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, role, focus, dismiss])
+
+  return (
+    <>
+      <TooltipWrapper
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        {children}
+      </TooltipWrapper>
+      {isOpen && (
+        <FloatingPortal>
+          <TooltipContent
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {content}
+            <TooltipArrow
+              ref={arrowRef}
+              context={context}
+            />
+          </TooltipContent>
+        </FloatingPortal>
+      )}
+    </>
+  )
+}
+
+export default Tooltip
+","{ isOpen, setIsOpen } from 'isOpen'",0
+"import { AsYouType } from 'libphonenumber-js'
+import { ChangeEvent, useRef } from 'react'
+import type { AriaTextFieldProps } from 'react-aria'
+import { useTextField } from 'react-aria'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputLabelFloat, InputWrapper } from './InputText.styled'
+
+type InputType = 'text' | 'password' | 'email' | 'number' | 'tel'
+
+interface InputTextProps extends AriaTextFieldProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (e: any) => void
+  error?: string
+  size?: Size
+  type?: InputType
+  fullWidth?: boolean
+  floatLabel?: boolean
+}
+
+const InputText = (props: InputTextProps) => {
+  const ref = useRef(null)
+  const { labelProps, inputProps } = useTextField(props, ref)
+
+  const {
+    id,
+    label,
+    type,
+    onChange,
+    size = 'md',
+    fullWidth = false,
+    isRequired = false,
+    floatLabel = false,
+    isDisabled = false,
+    placeholder,
+    error,
+  } = props
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (type === 'tel') {
+      const formattedPhoneNumber = new AsYouType().input(event.target.value)
+      onChange?.(formattedPhoneNumber)
+    } else {
+      onChange?.(event.target.value)
+    }
+  }
+
+  return (
+    <InputWrapper
+      $fullWidth={fullWidth}",      $floatLabel={floatLabel},"      $size={size}
+    >
+      {label && !floatLabel && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+          {...labelProps}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabel>
+      )}
+      <Input
+        ref={ref}
+        aria-labelledby={id}
+        {...inputProps}
+        placeholder={floatLabel ? '' : placeholder}
+        onChange={handleChange}
+        $disabled={isDisabled}
+        $floatLabel={floatLabel}
+        $size={size}
+      />
+      {label && floatLabel && (
+        <InputLabelFloat
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {isRequired && '*'}
+        </InputLabelFloat>
+      )}
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputText
+",>,0
+"import { forwardRef, useImperativeHandle, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import Button from '../button/Button'
+import Dialog from './Dialog'
+
+export interface IConfirmationDialogRef {
+  open: (data?: any) => void
+}
+
+export interface IConfirmationDialog {
+  title?: string
+  footerDefaultCancelButtonTitle?: string
+  footerDefaultConfirmButtonTitle?: string
+  onConfirm?: (payload?: any) => void
+  onCancel?: (payload?: any) => void
+  children?: JSX.Element
+}
+
+const ConfirmationDialog = forwardRef<IConfirmationDialogRef, IConfirmationDialog>(
+  (
+    {
+      title,
+      footerDefaultCancelButtonTitle = 'Common:ui.close',
+      footerDefaultConfirmButtonTitle = 'Common:ui.confirm',
+      onConfirm,
+      onCancel,
+      children,
+    },
+    ref,
+  ) => {
+    const { t } = useTranslation()
+    const [isOpen, setOpen] = useState<boolean>(false)
+    const [payload, setPayload] = useState<any>(undefined)
+
+    useImperativeHandle(ref, () => ({
+      open(data?: any) {
+        setPayload(data)
+        setOpen(true)
+      },
+    }))
+",    const handleConfirm = () => {,"      setOpen(false)
+      onConfirm?.(payload)
+    }
+
+    const handleCancel = () => {
+      setOpen(false)
+      onCancel?.(payload)
+    }
+
+    return (
+      <Dialog
+        isVisible={isOpen}
+        footerDefaultButtonTitle={footerDefaultCancelButtonTitle}
+        title={title}
+        footer={
+          <>
+            <Button
+              onClick={handleConfirm}
+              label={t(footerDefaultConfirmButtonTitle)}
+            />
+          </>
+        }
+        onClose={handleCancel}
+      >
+        {children ?? <></>}
+      </Dialog>
+    )
+  },
+)
+
+export default ConfirmationDialog
+
+ConfirmationDialog.displayName = 'Confirmation dialog'
+",},0
+"/* eslint-disable camelcase */
+/* eslint-disable sonarjs/no-duplicate-string */
+import { t } from 'i18next'
+import { z } from 'zod'
+
+export const companyNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const companyTagValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .min(3, t('profile.validator.minCompanyTag'))
+
+export const companyVatIdValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .max(10, t('profile.validator.maxVatId'))
+
+export const firstNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const lastNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const emailValidator = z.string().email(t('common.validator.validateEmail'))
+
+export const phoneNumberValidator = z
+  .string()
+  .regex(
+    new RegExp(/^\+\d{1,3}\s?\d{1,4}[\s.-]?\d{3}[\s.-]?\d{3,4}$/),
+    t('common.validator.validatePhone'),
+  )
+
+export const passwordValidator = z.string().min(8, t('profile.validator.minPasswd'))
+
+export const confirmPasswordValidator = z.string()
+
+export const termsValidator = z.boolean({
+  required_error: t('profile.validator.requiredTerms'),
+})
+
+export const registrationSchema = z
+  .object({
+    companyName: companyNameValidator,
+    companyTag: companyTagValidator,
+    companyVatId: companyVatIdValidator,
+    firstName: firstNameValidator,
+    lastName: lastNameValidator,
+    email: emailValidator,
+    phoneNumber: phoneNumberValidator,
+    password: passwordValidator,","    confirmPassword: confirmPasswordValidator,","    terms: termsValidator,
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: t('profile.validator.passwordsDoNotMatch'),
+  })
+","passwordValidator,",0
+"import { forwardRef, useImperativeHandle, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import Button from '../button/Button'
+import Dialog from './Dialog'
+
+export interface IConfirmationDialogRef {
+  open: (data?: any) => void
+}
+
+export interface IConfirmationDialog {
+  title?: string
+  footerDefaultCancelButtonTitle?: string
+  footerDefaultConfirmButtonTitle?: string
+  onConfirm?: (payload?: any) => void
+  onCancel?: (payload?: any) => void
+  children?: JSX.Element
+}
+
+const ConfirmationDialog = forwardRef<IConfirmationDialogRef, IConfirmationDialog>(
+  (
+    {
+      title,
+      footerDefaultCancelButtonTitle = 'Common:ui.close',
+      footerDefaultConfirmButtonTitle = 'Common:ui.confirm',
+      onConfirm,
+      onCancel,
+      children,
+    },
+    ref,
+  ) => {
+    const { t } = useTranslation()
+    const [isOpen, setOpen] = useState<boolean>(false)
+    const [payload, setPayload] = useState<any>(undefined)
+
+    useImperativeHandle(ref, () => ({
+      open(data?: any) {
+        setPayload(data)
+        setOpen(true)
+      },
+    }))
+",    const handleConfirm = () => {,"      setOpen(false)
+      onConfirm?.(payload)
+    }
+
+    const handleCancel = () => {
+      setOpen(false)
+      onCancel?.(payload)
+    }
+
+    return (
+      <Dialog
+        isVisible={isOpen}
+        footerDefaultButtonTitle={footerDefaultCancelButtonTitle}
+        title={title}
+        footer={
+          <>
+            <Button
+              onClick={handleConfirm}
+              label={t(footerDefaultConfirmButtonTitle)}
+            />
+          </>
+        }
+        onClose={handleCancel}
+      >
+        {children ?? <></>}
+      </Dialog>
+    )
+  },
+)
+
+export default ConfirmationDialog
+
+ConfirmationDialog.displayName = 'Confirmation dialog'
+",},0
+"/* eslint-disable camelcase */
+/* eslint-disable sonarjs/no-duplicate-string */
+import { t } from 'i18next'
+import { z } from 'zod'
+
+export const companyNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const companyTagValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .min(3, t('register.validator.minCompanyTag'))
+
+export const companyVatIdValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .max(10, t('register.validator.maxVatId'))
+
+export const firstNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const lastNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const emailValidator = z.string().email(t('common.validator.validateEmail'))
+
+export const phoneNumberValidator = z
+  .string()
+  .regex(
+    new RegExp(/^\+\d{1,3}\s?\d{1,4}[\s.-]?\d{3}[\s.-]?\d{3,4}$/),
+    t('common.validator.validatePhone'),
+  )
+
+export const passwordValidator = z.string().min(8, t('register.validator.minPasswd'))
+
+export const confirmPasswordValidator = z.string()
+
+export const termsValidator = z.boolean({
+  required_error: t('register.validator.requiredTerms'),
+})
+
+export const registrationSchema = z
+  .object({
+    companyName: companyNameValidator,
+    companyTag: companyTagValidator,
+    companyVatId: companyVatIdValidator,
+    firstName: firstNameValidator,
+    lastName: lastNameValidator,
+    email: emailValidator,
+    phoneNumber: phoneNumberValidator,
+    password: passwordValidator,
+    confirmPassword: confirmPasswordValidator,
+    terms: termsValidator,
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: t('register.validator.passwordsDoNotMatch'),
+  })
+
+export const validateConflicts = (msg: string) => {",  if (msg.includes('email')) {,"    return 'email'
+  } else if (msg.includes('tag')) {
+    return 'tag'
+  }
+  return 'error'
+}
+",t('register.validator.conflicts') => msg.message || 'already,0
+"import { useTranslation } from 'react-i18next'
+import { toast } from 'react-toastify'
+
+import { useAuth } from '@/auth'
+import { useCheckoutMutation } from '@/shared/api/paymentsQuery'
+import { useGetProductsQuery } from '@/shared/api/productsQuery'
+import Skeleton from '@/shared/components/skeleton/Skeleton'
+import LoadingWrapper from '@/shared/components/wrapper/LoadingWrapper'
+import { PageWrapper } from '@/shared/components/wrapper/PageWrapper'
+import { IProduct } from '@/shared/model/products'
+
+import { ProductCard } from './components/ProductCard'
+import { ProductsWrapper } from './productsElements'
+import useDimBreakpoints from '@/shared/utils/useDimBreakpoints'
+
+const Products = () => {
+  const { t } = useTranslation()
+  const auth = useAuth()
+  const { md } = useDimBreakpoints()
+  const { data: products, isLoading } = useGetProductsQuery('pl')
+  const { mutateAsync: checkoutMutation } = useCheckoutMutation()
+
+  const handleCheckout = (productId: string) => {
+    if (!auth.decodedUser) throw new Error('No user')
+    return toast.promise(
+      checkoutMutation({
+        customerId: auth.decodedUser?.id,
+        productId,
+        paymentMethodTypes: ['card'],
+      }).then((res) => {
+        window.location.href = res.url
+      }),
+      {
+        pending: t('products.toast.pending'),
+        success: t('products.toast.success'),
+        error: t('products.toast.checkoutErr'),
+      },
+    )
+  }
+
+  if (isLoading || !products) {
+    return (
+      <LoadingWrapper>
+        <Skeleton
+          repeat={1}
+          fullWidth
+        />
+        <Skeleton
+          height={md ? 500 : 300}
+          width={md ? 300 : 1000}
+        />
+      </LoadingWrapper>
+    )
+  }
+
+  return (
+    <PageWrapper>
+      <h1 className='page-wrapper-gradient'>{t('products.title')}</h1>
+      <ProductsWrapper>
+        {products.map((product: IProduct, idx: number) => {
+          return (
+            <ProductCard
+              key={idx}
+              index={idx}
+              name={product.name}
+              description={product.shortDescription}
+              price={product.prize}",              onCheckout={handleCheckout},"            />
+          )
+        })}
+      </ProductsWrapper>
+    </PageWrapper>
+  )
+}
+
+export default Products
+",},0
+"import { motion } from 'framer-motion'
+
+export const LoginBlob = () => (
+  <svg
+    width='760'
+    height='675'
+    viewBox='0 -60 760 760'
+    fill='none'
+    xmlns='http://www.w3.org/2000/svg'
+    preserveAspectRatio='xMidYMid slice'
+  >
+    <g filter='url(#filter0_d_2_18)'>
+      <motion.path
+        d='M727.133 121.085C771.85 204.659 719.308 335.755 647.76 445.548C576.213 555.887 486.778 644.377 372.191 658.033C257.603 671.688 118.98 611.056 51.9038 503.448C-15.172 396.387 -10.1413 242.349 59.7293 145.119C129.041 47.8898 262.634 7.4685 401.257 4.73734C539.321 2.5524 682.416 38.0576 727.133 121.085Z'
+        fill='url(#paint0_linear_2_18)'
+        preserveAspectRatio='xMidYMid slice'
+        animate={{
+          rotate: [0, 2, -8, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          repeatType: 'loop',
+          ease: 'easeInOut',
+        }}
+      />
+    </g>
+    <defs>
+      <filter
+        id='filter0_d_2_18'
+        x='0.748632'
+        y='-10'
+        width='758.518'
+        height='974.494'",        filterUnits='userSpaceOnUse',"        colorInterpolationFilters='sRGB'
+      >
+        <feFlood
+          floodOpacity='0'
+          result='BackgroundImageFix'
+        />
+        <feColorMatrix
+          in='SourceAlpha'
+          type='matrix'
+          values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0'
+          result='hardAlpha'
+        />
+        <feOffset
+          dx='6'
+          dy='5'
+        />
+        <feGaussianBlur stdDeviation='4.8' />
+
+        <feColorMatrix
+          type='matrix'
+          values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0'
+        />
+        <feBlend
+          mode='normal'
+          in2='BackgroundImageFix'
+          result='effect1_dropShadow_2_18'
+        />
+        <feBlend
+          mode='normal'
+          in='SourceGraphic'
+          in2='effect1_dropShadow_2_18'
+          result='shape'
+        />
+      </filter>
+      <motion.linearGradient
+        id='paint0_linear_2_18'
+        x1='79.5'
+        y1='34.5'
+        x2='374.008'
+        y2='659.937'
+        gradientUnits='userSpaceOnUse'
+      >
+        <stop
+          stopColor='#25E0FF'
+          stopOpacity='0.79'
+        />
+        <stop
+          offset='0.885'
+          stopColor='#2B67AB'
+          stopOpacity='0.95'
+        />
+      </motion.linearGradient>
+    </defs>
+  </svg>
+)
+",opacity='0.79',1
+"import { useEffect, useState } from 'react'
+
+import { commonTheme } from '../theme/commonTheme'
+
+const useDimBreakpoints = () => {
+  const [matches, setMatches] = useState({
+    xs: false,
+    s: false,
+    md: false,
+    lg: false,
+    xl: false,
+    xxl: false,
+    xxxl: false,
+  })
+
+  useEffect(() => {
+    const breakpoints = commonTheme.breakpoint
+    const mediaQueries = {
+      xs: window.matchMedia(`(max-width: ${breakpoints.xs})`),
+      s: window.matchMedia(`(max-width: ${breakpoints.s})`),
+      md: window.matchMedia(`(max-width: ${breakpoints.md})`),
+      lg: window.matchMedia(`(max-width: ${breakpoints.lg})`),
+      xl: window.matchMedia(`(max-width: ${breakpoints.xl})`),
+      xxl: window.matchMedia(`(max-width: ${breakpoints.xxl})`),
+      xxxl: window.matchMedia(`(max-width: ${breakpoints.xxxl})`),
+    }
+
+    const handleMediaQueryChange = () => {
+      setMatches({
+        xs: mediaQueries.xs.matches,
+        s: mediaQueries.s.matches,
+        md: mediaQueries.md.matches,
+        lg: mediaQueries.lg.matches,
+        xl: mediaQueries.xl.matches,
+        xxl: mediaQueries.xxl.matches,
+        xxxl: mediaQueries.xxxl.matches,
+      })
+    }
+
+    handleMediaQueryChange()
+
+    for (const mq of Object.values(mediaQueries)) {
+      if (mq.addEventListener) {
+        mq.addEventListener('change', handleMediaQueryChange)
+      } else {
+        mq.addListener(handleMediaQueryChange)
+      }
+    }
+
+    return () => {
+      for (const mq of Object.values(mediaQueries)) {
+        if (mq.removeEventListener) {","          mq.removeEventListener('change', handleMediaQueryChange)","        } else {
+          mq.removeListener(handleMediaQueryChange)
+        }
+      }
+    }
+  }, [])
+
+  return matches
+}
+
+export default useDimBreakpoints
+",},1
+"/* eslint-disable eslint-comments/no-use */
+import { ChangeEvent } from 'react'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper } from './InputFile.styled'
+
+interface InputFileProps {
+  id: string
+  onChange: (v: FileList) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (v: any) => void
+  onBlur?: () => void
+  error?: string
+  label?: string
+  disabled?: boolean
+  size?: Size
+  fullWidth?: boolean
+  required?: boolean
+  multiple?: boolean
+  accept?: string
+}
+
+const InputFile = ({
+  id,
+  onChange,
+  onClick,
+  onBlur,
+  error,
+  label,
+  disabled,
+  size = 'md',
+  fullWidth = false,
+  required,
+  multiple,
+  accept,",}: InputFileProps) => {,"  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    event.target.files && onChange(event.target.files)
+    //TODO request to post file to server
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLInputElement>) => {
+    onClick?.(event.target)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  return (
+    <InputWrapper $fullWidth={fullWidth}>
+      {label && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {required && '*'}
+        </InputLabel>
+      )}
+      <Input
+        id={id}
+        type='file'
+        onChange={handleChange}
+        onClick={handleClick}
+        onBlur={handleBlur}
+        disabled={disabled}
+        multiple={multiple}
+        accept={accept}
+        $size={size}
+      />
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputFile
+","size = 'large',",0
+"import {
+  arrow,
+  flip,
+  FloatingPortal,
+  shift,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
+import { useRef, useState } from 'react'
+
+import { TooltipArrow, TooltipContent, TooltipWrapper } from './tooltipElements'
+
+export interface ITooltip {
+  children: JSX.Element[] | JSX.Element
+  content: string
+  placement?:
+    | 'top'
+    | 'right'
+    | 'bottom'
+    | 'left'
+    | 'top-start'
+    | 'top-end'
+    | 'right-start'
+    | 'right-end'
+    | 'bottom-start'
+    | 'bottom-end'
+    | 'left-start'
+    | 'left-end'
+}
+
+const Tooltip = ({ children, content, placement }: ITooltip) => {
+  const arrowRef = useRef(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,","    onOpenChange: setIsOpen,","    middleware: [
+      arrow({
+        element: arrowRef,
+      }),
+      flip(),
+      shift(),
+    ],
+    placement,
+  })
+
+  const hover = useHover(context, {
+    delay: {
+      open: 200,
+      close: 100,
+    },
+  })
+
+  const role = useRole(context, {
+    role: 'tooltip',
+  })
+
+  const focus = useFocus(context)
+
+  const dismiss = useDismiss(context)
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, role, focus, dismiss])
+
+  return (
+    <>
+      <TooltipWrapper
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        {children}
+      </TooltipWrapper>
+      {isOpen && (
+        <FloatingPortal>
+          <TooltipContent
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {content}
+            <TooltipArrow
+              ref={arrowRef}
+              context={context}
+            />
+          </TooltipContent>
+        </FloatingPortal>
+      )}
+    </>
+  )
+}
+
+export default Tooltip
+","close: isOpen,",1
+"import { queryOptions, useQuery } from '@tanstack/react-query'
+
+import { ICustomer, ILicenseRes } from '../model/customers'
+import { api } from './api'
+
+export const useGetCustomerId = (customerTag?: string) => {
+  return useQuery({
+    queryKey: ['customerId', customerTag],
+    enabled: !!customerTag,
+    queryFn: async () => {
+      const { data } = await api.get<{ customerId: string }>(`/portal/customer-id`, {
+        params: { customerTag },
+      })
+      return data
+    },
+  })
+}
+
+export const useGetLicensesQuery = (active?: boolean) => {
+  return useQuery({
+    queryKey: ['licenses', 'own-license', active],
+    queryFn: async () => {
+      const { data } = await api.get<ILicenseRes>(`/portal/licenses`, {
+        params: { active },
+      })
+      return data.licenses
+    },
+  })
+}
+
+export const useGetLicensesByIdQuery = (id: string) => {
+  return queryOptions({
+    queryKey: ['licenses', id],
+    queryFn: async () => {
+      const { data } = await api.get<ILicenseRes>(`/portal/customers/${id}/licenses`)
+      return data
+    },
+  })
+}
+
+export interface IProfileRes {
+  customer: ICustomer
+}
+
+export const useGetUserProfile = () => {
+  return useQuery({","    queryKey: ['userProfile'],","    queryFn: async () => {
+      const { data } = await api.get<IProfileRes>(`/portal/profile`)
+      return data.customer
+    },
+  })
+}
+","'customer': customer },",0
+"import { useNavigate } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { AiFillProduct } from 'react-icons/ai'
+import { CgProfile } from 'react-icons/cg'
+import { GrLicense } from 'react-icons/gr'
+
+import { useAuth } from '@/auth'
+import { router } from '@/main'
+import { PageWrapper } from '@/shared/components/wrapper/PageWrapper'
+
+import { HomeWrapper, MyProductsBlock, ProductsBlock, ProfileBlock } from './homeElements'
+
+const Home = () => {
+  const { t } = useTranslation()
+  const { decodedUser } = useAuth()
+  const navigate = useNavigate({ from: '/' })
+
+  return (
+    <PageWrapper>
+      <h1 className='page-wrapper-gradient'>
+        {t('home.title')}
+        {decodedUser?.firstName && ` ${decodedUser?.firstName}`}!
+      </h1>
+      <HomeWrapper>
+        <ProductsBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/products' })}
+          onHoverStart={() => router.preloadRoute({ to: '/products' })}
+        >
+          <div>
+            <h2>{t('home.products.title')}</h2>
+            <p>{t('home.products.desc')}</p>
+          </div>
+          <div className='home home-icon'>
+            <AiFillProduct />
+          </div>
+        </ProductsBlock>
+        <MyProductsBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/myProducts' })}
+          onHoverStart={() => router.preloadRoute({ to: '/myProducts' })}
+        >
+          <div>
+            <h2>{t('home.myProducts.title')}</h2>
+            <p>{t('home.myProducts.desc')}</p>
+          </div>
+          <div className='home home-icon'>
+            <GrLicense />
+          </div>
+        </MyProductsBlock>
+        <ProfileBlock
+          whileTap={{ scale: 0.99 }}
+          whileHover={{ scale: 1.01 }}
+          onClick={() => navigate({ to: '/profile' })}
+          onHoverStart={() => router.preloadRoute({ to: '/profile' })}
+        >
+          <div className='home home-bento-vertical'>
+            <h2>",              {t('home.profile.title')},"              {decodedUser?.companyName &&
+                decodedUser?.customerTag &&
+                `: ${decodedUser?.companyName} - ${decodedUser?.customerTag}`}
+            </h2>
+            <p>{t('home.profile.desc')}</p>
+          </div>
+          <div className='home home-icon home-bento-vertical'>
+            <CgProfile />
+          </div>
+        </ProfileBlock>
+      </HomeWrapper>
+    </PageWrapper>
+  )
+}
+
+export default Home
+",</h2>,1
+"import { queryOptions, useQuery } from '@tanstack/react-query'
+
+import { ICustomer, ILicenseRes } from '../model/customers'
+import { api } from './api'
+
+export const useGetCustomerId = (customerTag?: string) => {
+  return useQuery({
+    queryKey: ['customerId', customerTag],
+    enabled: !!customerTag,
+    queryFn: async () => {
+      const { data } = await api.get<{ customerId: string }>(`/portal/customer-id`, {
+        params: { customerTag },
+      })
+      return data
+    },
+  })
+}
+
+export const useGetLicensesQuery = (active?: boolean) => {
+  return useQuery({
+    queryKey: ['licenses', 'own-license', active],
+    queryFn: async () => {
+      const { data } = await api.get<ILicenseRes>(`/portal/licenses`, {
+        params: { active },
+      })
+      return data.licenses
+    },
+  })
+}
+
+export const useGetLicensesByIdQuery = (id: string) => {
+  return queryOptions({","    queryKey: ['licenses', id],","    queryFn: async () => {
+      const { data } = await api.get<ILicenseRes>(`/portal/customers/${id}/licenses`)
+      return data
+    },
+  })
+}
+
+export interface IProfileRes {
+  customer: ICustomer
+}
+
+export const useGetUserProfile = () => {
+  return useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const { data } = await api.get<IProfileRes>(`/portal/profile`)
+      return data.customer
+    },
+  })
+}
+","'id': 'id', 'queryFn': async () => {",0
+"import { motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+
+import { useDimensions } from '@/shared/utils/useDimensions'
+
+import { MobileNavbarWrapper } from './NavbarMobileElements'
+import { NavbarNavigation } from './NavbarNavigation'
+import { NavbarToggle } from './NavbarToggle'
+
+const sidebar = {
+  open: () => ({
+    clipPath: `circle(2000px at left 40px bottom 40px)`,
+    transition: {
+      type: 'spring',
+      stiffness: 20,
+      restDelta: 2,
+    },
+  }),
+  closed: {
+    clipPath: 'circle(30px at left 40px bottom 40px)',
+    transition: {
+      delay: 0.2,
+      type: 'spring',
+      stiffness: 400,
+      damping: 40,
+    },
+  },
+}
+
+export const NavbarMobile = () => {
+  const [isOpen, setOpen] = useState<boolean>(false)
+  const containerRef = useRef(null)
+  const { height } = useDimensions(containerRef)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.top = `-${window.scrollY}px`",      document.body.style.position = 'fixed',"    } else {
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    }
+  }, [isOpen])
+
+  return (
+    <MobileNavbarWrapper
+      initial={false}
+      animate={isOpen ? 'open' : 'closed'}
+      custom={height}
+      ref={containerRef}
+      $isOpen={isOpen}
+    >
+      <motion.div
+        className='background'
+        variants={sidebar}
+      />
+      <NavbarNavigation toggle={setOpen} />
+      <NavbarToggle toggle={() => setOpen((prev) => !prev)} />
+    </MobileNavbarWrapper>
+  )
+}
+",_ = {,0
+"import { forwardRef, useImperativeHandle, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import Button from '../button/Button'
+import Dialog from './Dialog'
+
+export interface IConfirmationDialogRef {
+  open: (data?: any) => void
+}
+
+export interface IConfirmationDialog {
+  title?: string
+  footerDefaultCancelButtonTitle?: string
+  footerDefaultConfirmButtonTitle?: string
+  onConfirm?: (payload?: any) => void
+  onCancel?: (payload?: any) => void
+  children?: JSX.Element
+}
+
+const ConfirmationDialog = forwardRef<IConfirmationDialogRef, IConfirmationDialog>(
+  (
+    {
+      title,
+      footerDefaultCancelButtonTitle = 'Common:ui.close',
+      footerDefaultConfirmButtonTitle = 'Common:ui.confirm',
+      onConfirm,
+      onCancel,
+      children,
+    },
+    ref,
+  ) => {
+    const { t } = useTranslation()
+    const [isOpen, setOpen] = useState<boolean>(false)
+    const [payload, setPayload] = useState<any>(undefined)
+
+    useImperativeHandle(ref, () => ({
+      open(data?: any) {
+        setPayload(data)
+        setOpen(true)
+      },
+    }))
+
+    const handleConfirm = () => {
+      setOpen(false)
+      onConfirm?.(payload)
+    }
+
+    const handleCancel = () => {
+      setOpen(false)
+      onCancel?.(payload)
+    }
+
+    return (
+      <Dialog
+        isVisible={isOpen}
+        footerDefaultButtonTitle={footerDefaultCancelButtonTitle}
+        title={title}
+        footer={
+          <>
+            <Button
+              onClick={handleConfirm}
+              label={t(footerDefaultConfirmButtonTitle)}
+            />
+          </>
+        }
+        onClose={handleCancel}
+      >",        {children ?? <></>},"      </Dialog>
+    )
+  },
+)
+
+export default ConfirmationDialog
+
+ConfirmationDialog.displayName = 'Confirmation dialog'
+",</Dialog>,1
+"import { Outlet } from '@tanstack/react-router'
+import { useCallback, useEffect, useState } from 'react'
+
+import Footer from './Footer'
+import { NavbarMobile } from './MobileNavbar/NavbarMobile'
+import NavbarMobileLogo from './MobileNavbar/NavbarMobileLogo'
+import Navbar from './Navbar'
+import { useGetUserProfile } from '@/shared/api/customersQuery'
+import { useAuth } from '@/auth'
+
+const Layout = () => {
+  const { updateUser } = useAuth()
+  const { data: customer, isError, isLoading } = useGetUserProfile()
+  const [width, setWidth] = useState<number>(window.innerWidth)
+
+  const handleWindowSizeChange = useCallback(() => {
+    setWidth(window.innerWidth)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowSizeChange)
+    return () => {
+      window.removeEventListener('resize', handleWindowSizeChange)
+    }
+  }, [handleWindowSizeChange])
+
+  const isMobile = width <= 1024
+
+  useEffect(() => {
+    if (!isLoading && !isError && customer) {
+      updateUser(customer)
+    }
+  }, [customer])
+
+  return (
+    <>",      {isMobile && <NavbarMobileLogo />},"      {!isMobile ?
+        <Navbar />
+      : <NavbarMobile />}
+      <Outlet />
+      <Footer />
+    </>
+  )
+}
+
+export default Layout
+",{},0
+"import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
+
+import { DATE_FORMAT } from '@/config'
+import Button from '@/shared/components/button/Button'
+import { ILicense } from '@/shared/model/customers'
+
+import sokarLogo from '../../../assets/sokar_logo.png'
+import { LicenseCardContent, LicenseCardImage, LicenseCardWrapper } from './licenseCardElements'
+
+export interface ILicenseCard extends ILicense {
+  index: number
+}
+
+export const LicenseCard = ({
+  appName,
+  appUrl,
+  companyName,
+  companyVatId,
+  expiresAt,
+  createdAt,
+  lastPaymentAt,
+  index,
+}: ILicenseCard) => {
+  const { t } = useTranslation()
+
+  return (
+    <LicenseCardWrapper
+      initial={{
+        opacity: 0,
+        x: index % 2 === 0 ? 50 : -50,
+      }}
+      whileInView={{
+        opacity: 1,
+        x: 0,
+        transition: {
+          duration: 0.6,
+        },
+      }}
+      viewport={{ once: true }}
+    >
+      <LicenseCardImage>
+        <img
+          src={sokarLogo}
+          alt='sokar logo'
+        />
+      </LicenseCardImage>
+      <LicenseCardContent>
+        <span className='product-card-text'>
+          <h1>{appName}</h1>
+          <p>
+            <span>{companyName}</span>
+          </p>
+          <p>
+            <span>{t('products.vatId')}:</span> {companyVatId}
+          </p>
+          <p>
+            <span>{t('products.createdAt')}:</span> {dayjs(createdAt, '', 'pl').format(DATE_FORMAT)}
+          </p>
+          <p>
+            <span>{t('products.lastPaymentAt')}:</span> {dayjs(lastPaymentAt).format(DATE_FORMAT)}
+          </p>
+          <p>
+            <span>{t('products.expiresAt')}:</span> {dayjs(expiresAt).format(DATE_FORMAT)}
+          </p>
+        </span>
+        <span className='product-card-footer'>
+          <p></p>
+          <a
+            href={`https://${appUrl}`}
+            target='_blank'
+            rel='noreferrer'
+          >
+            <Button
+              label={t('products.goTo')}",              size='md',"              isDisabled={dayjs(expiresAt) <= dayjs()}
+              animations={['tap', 'hover', 'gradient']}
+            />
+          </a>
+        </span>
+      </LicenseCardContent>
+    </LicenseCardWrapper>
+  )
+}
+",</Button>,0
+"/* eslint-disable camelcase */
+/* eslint-disable sonarjs/no-duplicate-string */
+import { t } from 'i18next'
+import { z } from 'zod'
+
+export const companyNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const companyTagValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .min(3, t('profile.validator.minCompanyTag'))
+
+export const companyVatIdValidator = z
+  .string()
+  .min(1, t('common.validator.requiredField'))
+  .max(10, t('profile.validator.maxVatId'))
+
+export const firstNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const lastNameValidator = z.string().min(1, t('common.validator.requiredField'))
+
+export const emailValidator = z.string().email(t('common.validator.validateEmail'))
+
+export const phoneNumberValidator = z
+  .string()
+  .regex(
+    new RegExp(/^\+\d{1,3}\s?\d{1,4}[\s.-]?\d{3}[\s.-]?\d{3,4}$/),
+    t('common.validator.validatePhone'),
+  )
+
+export const passwordValidator = z.string().min(8, t('profile.validator.minPasswd'))
+
+export const confirmPasswordValidator = z.string()
+
+export const termsValidator = z.boolean({
+  required_error: t('profile.validator.requiredTerms'),
+})
+
+export const registrationSchema = z
+  .object({
+    companyName: companyNameValidator,
+    companyTag: companyTagValidator,
+    companyVatId: companyVatIdValidator,
+    firstName: firstNameValidator,
+    lastName: lastNameValidator,
+    email: emailValidator,","    phoneNumber: phoneNumberValidator,","    password: passwordValidator,
+    confirmPassword: confirmPasswordValidator,
+    terms: termsValidator,
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: t('profile.validator.passwordsDoNotMatch'),
+  })
+","phoneNumber: phoneNumberValidator,",1
+"import { motion } from 'framer-motion'
+
+export const LoginBlob = () => (
+  <svg
+    width='760'
+    height='675'
+    viewBox='0 -60 760 760'
+    fill='none'
+    xmlns='http://www.w3.org/2000/svg'
+    preserveAspectRatio='xMidYMid slice'
+  >
+    <g filter='url(#filter0_d_2_18)'>
+      <motion.path
+        d='M727.133 121.085C771.85 204.659 719.308 335.755 647.76 445.548C576.213 555.887 486.778 644.377 372.191 658.033C257.603 671.688 118.98 611.056 51.9038 503.448C-15.172 396.387 -10.1413 242.349 59.7293 145.119C129.041 47.8898 262.634 7.4685 401.257 4.73734C539.321 2.5524 682.416 38.0576 727.133 121.085Z'
+        fill='url(#paint0_linear_2_18)'
+        preserveAspectRatio='xMidYMid slice'
+        animate={{
+          rotate: [0, 2, -8, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          repeatType: 'loop',
+          ease: 'easeInOut',
+        }}
+      />
+    </g>
+    <defs>
+      <filter
+        id='filter0_d_2_18'
+        x='0.748632'
+        y='-10'
+        width='758.518'
+        height='974.494'
+        filterUnits='userSpaceOnUse'
+        colorInterpolationFilters='sRGB'
+      >
+        <feFlood
+          floodOpacity='0'
+          result='BackgroundImageFix'
+        />
+        <feColorMatrix
+          in='SourceAlpha'
+          type='matrix'
+          values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0'
+          result='hardAlpha'
+        />
+        <feOffset
+          dx='6'
+          dy='5'
+        />
+        <feGaussianBlur stdDeviation='4.8' />
+
+        <feColorMatrix
+          type='matrix'
+          values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0'
+        />
+        <feBlend
+          mode='normal'
+          in2='BackgroundImageFix'
+          result='effect1_dropShadow_2_18'
+        />
+        <feBlend
+          mode='normal'
+          in='SourceGraphic'
+          in2='effect1_dropShadow_2_18'
+          result='shape'
+        />
+      </filter>
+      <motion.linearGradient
+        id='paint0_linear_2_18'
+        x1='79.5'
+        y1='34.5'
+        x2='374.008'
+        y2='659.937'
+        gradientUnits='userSpaceOnUse'
+      >
+        <stop
+          stopColor='#25E0FF'
+          stopOpacity='0.79'
+        />
+        <stop
+          offset='0.885'
+          stopColor='#2B67AB'",          stopOpacity='0.95',"        />
+      </motion.linearGradient>
+    </defs>
+  </svg>
+)
+",/>,1
+"import { Outlet } from '@tanstack/react-router'
+import { useCallback, useEffect, useState } from 'react'
+
+import Footer from './Footer'
+import { NavbarMobile } from './MobileNavbar/NavbarMobile'
+import NavbarMobileLogo from './MobileNavbar/NavbarMobileLogo'
+import Navbar from './Navbar'
+import { useGetUserProfile } from '@/shared/api/customersQuery'
+import { useAuth } from '@/auth'
+
+const Layout = () => {
+  const { updateUser } = useAuth()
+  const { data: customer, isError, isLoading } = useGetUserProfile()
+  const [width, setWidth] = useState<number>(window.innerWidth)
+
+  const handleWindowSizeChange = useCallback(() => {
+    setWidth(window.innerWidth)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowSizeChange)
+    return () => {
+      window.removeEventListener('resize', handleWindowSizeChange)
+    }
+  }, [handleWindowSizeChange])
+
+  const isMobile = width <= 1024
+
+  useEffect(() => {
+    if (!isLoading && !isError && customer) {
+      updateUser(customer)
+    }
+  }, [customer])
+
+  return (
+    <>
+      {isMobile && <NavbarMobileLogo />}
+      {!isMobile ?
+        <Navbar />",      : <NavbarMobile />},"      <Outlet />
+      <Footer />
+    </>
+  )
+}
+
+export default Layout
+",<NavbarMobileLogo }}>,0
+"import { Outlet } from '@tanstack/react-router'
+import { useCallback, useEffect, useState } from 'react'
+
+import Footer from './Footer'
+import { NavbarMobile } from './MobileNavbar/NavbarMobile'
+import NavbarMobileLogo from './MobileNavbar/NavbarMobileLogo'
+import Navbar from './Navbar'
+import { useGetUserProfile } from '@/shared/api/customersQuery'
+import { useAuth } from '@/auth'
+
+const Layout = () => {
+  const { updateUser } = useAuth()
+  const { data: customer, isError, isLoading } = useGetUserProfile()
+  const [width, setWidth] = useState<number>(window.innerWidth)
+
+  const handleWindowSizeChange = useCallback(() => {
+    setWidth(window.innerWidth)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowSizeChange)
+    return () => {
+      window.removeEventListener('resize', handleWindowSizeChange)
+    }
+  }, [handleWindowSizeChange])
+
+  const isMobile = width <= 1024
+
+  useEffect(() => {
+    if (!isLoading && !isError && customer) {
+      updateUser(customer)
+    }
+  }, [customer])
+
+  return (
+    <>
+      {isMobile && <NavbarMobileLogo />}
+      {!isMobile ?
+        <Navbar />
+      : <NavbarMobile />}
+      <Outlet />
+      <Footer />
+    </>
+  )
+}
+",export default Layout,,const layout = layout || {,0
+"import {
+  arrow,
+  flip,
+  FloatingPortal,
+  shift,
+  useDismiss,
+  useFloating,
+  useFocus,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
+import { useRef, useState } from 'react'
+
+import { TooltipArrow, TooltipContent, TooltipWrapper } from './tooltipElements'
+
+export interface ITooltip {
+  children: JSX.Element[] | JSX.Element
+  content: string
+  placement?:
+    | 'top'
+    | 'right'
+    | 'bottom'
+    | 'left'
+    | 'top-start'
+    | 'top-end'
+    | 'right-start'
+    | 'right-end'
+    | 'bottom-start'
+    | 'bottom-end'
+    | 'left-start'
+    | 'left-end'
+}
+
+const Tooltip = ({ children, content, placement }: ITooltip) => {
+  const arrowRef = useRef(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    middleware: [
+      arrow({
+        element: arrowRef,
+      }),
+      flip(),
+      shift(),
+    ],
+    placement,
+  })
+
+  const hover = useHover(context, {
+    delay: {
+      open: 200,
+      close: 100,
+    },
+  })
+
+  const role = useRole(context, {
+    role: 'tooltip',
+  })
+
+  const focus = useFocus(context)
+
+  const dismiss = useDismiss(context)
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([hover, role, focus, dismiss])
+
+  return (
+    <>
+      <TooltipWrapper
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        {children}
+      </TooltipWrapper>
+      {isOpen && (
+        <FloatingPortal>
+          <TooltipContent
+            ref={refs.setFloating}
+            style={floatingStyles}",            {...getFloatingProps()},"          >
+            {content}
+            <TooltipArrow
+              ref={arrowRef}
+              context={context}
+            />
+          </TooltipContent>
+        </FloatingPortal>
+      )}
+    </>
+  )
+}
+
+export default Tooltip
+",>,1
+"/* eslint-disable eslint-comments/no-use */
+import { ChangeEvent } from 'react'
+
+import { Size } from '@/shared/model/common'
+
+import {
+  InputError,
+  InputLabel,
+  InputLabelFloat,
+  InputWrapper,
+  Textarea,
+} from './InputTextarea.styled'
+
+interface InputTextareaProps {
+  id: string
+  value: string
+  onChange: (v: string) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (v: any) => void
+  onBlur?: () => void
+  error?: string
+  label?: string
+  placeholder?: string
+  disabled?: boolean
+  size?: Size
+  readOnly?: boolean
+  fullWidth?: boolean
+  required?: boolean
+  floatLabel?: boolean
+  minHeight?: string
+  maxHeight?: string
+}
+
+const InputTextarea = ({
+  id,
+  value,
+  onChange,
+  onClick,
+  onBlur,
+  error,
+  label,
+  placeholder,
+  minHeight = '24px',
+  maxHeight = '500px',
+  disabled = false,
+  size = 'md',
+  readOnly = false,
+  fullWidth = false,
+  required = false,
+  floatLabel = false,
+}: InputTextareaProps) => {
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(event.target.value)
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLTextAreaElement>) => {
+    !!onClick && onClick(event.target)
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+  }
+
+  const handleFocus = () => {
+    //
+  }
+
+  return (
+    <InputWrapper
+      $fullWidth={fullWidth}
+      $floatLabel={floatLabel}
+    >
+      {label && !floatLabel && (
+        <InputLabel
+          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {required && '*'}
+        </InputLabel>
+      )}
+      <Textarea
+        id={id}
+        name={id}
+        value={value}
+        placeholder={floatLabel ? 'floatLabel' : placeholder}
+        onChange={handleChange}
+        onClick={handleClick}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+        readOnly={readOnly}
+        disabled={disabled}
+        $floatLabel={floatLabel}
+        $minHeight={minHeight}
+        $maxHeight={maxHeight}
+        $size={size}
+      />
+      {label && floatLabel && (",        <InputLabelFloat,"          htmlFor={id}
+          $size={size}
+        >
+          {label}
+          {required && '*'}
+        </InputLabelFloat>
+      )}
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputTextarea
+",placeholder && 'floatLabel' : placeholder) && (,0
+"import { Link } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CgProfile } from 'react-icons/cg'
+
+import getTheme from '@/shared/utils/getTheme'
+
+import LogoText from '@assets/logo_text.webp'
+import Menu from './menu/Menu'
+import { NavbarLogo, NavbarMenu, NavbarWrapper } from './NavbarElements'
+
+const Navbar = () => {
+  const { t } = useTranslation()
+  const [isMenuOpen, setMenuOpen] = useState<boolean>(false)
+  const theme = getTheme()
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [window.location.href])
+
+  return (
+    <>
+      <Menu
+        isOpen={isMenuOpen}
+        theme={theme}
+        setMenuOpen={setMenuOpen}
+      />
+      <NavbarWrapper>
+        <NavbarLogo to='/'>
+          <img
+            src={LogoText}
+            alt='logo'
+          />
+        </NavbarLogo>
+        <NavbarMenu>
+          <Link to='/products'>{t('navbar.products')}</Link>
+          <Link to='/myProducts'>{t('navbar.myProducts')}</Link>
+          <motion.span whileTap={{ scale: 0.95 }}>
+            <CgProfile onClick={() => setMenuOpen((prev) => !prev)} />",          </motion.span>,"        </NavbarMenu>
+      </NavbarWrapper>
+    </>
+  )
+}
+
+export default Navbar
+",</motion.span>,1
+"import { useRef } from 'react'
+import type { AriaCheckboxProps } from 'react-aria'
+import { useCheckbox } from 'react-aria'
+import { useToggleState } from 'react-stately'
+
+import { Size } from '@/shared/model/common'
+
+import { Input, InputError, InputLabel, InputWrapper, Svg } from './InputCheckbox.styled'
+
+interface InputCheckboxProps extends AriaCheckboxProps {
+  id: string
+  size?: Size
+  error?: string
+  rtl?: boolean
+}
+
+const InputCheckbox = (props: InputCheckboxProps) => {
+  const { id, isRequired = false, size = 'md', error, children, rtl = false } = props
+  const state = useToggleState(props)
+  const ref = useRef(null)
+  const { inputProps } = useCheckbox(props, state, ref)
+
+  const viewBoxSwitch = (_size: Size) => {
+    switch (_size) {
+      case 'sm':
+        return '0 0 23 23'
+      case 'lg':
+        return '0 -1 17 17'
+      default:
+        return '0 0 21 21'
+    }
+  }
+
+  return (
+    <InputWrapper $size={size}>
+      <span>
+        {rtl && (
+          <InputLabel
+            htmlFor={id}
+            $size={size}
+          >
+            {children}
+            {isRequired && '*'}
+          </InputLabel>
+        )}
+        <Input
+          ref={ref}",          {...inputProps},"          id={id}
+          $size={size}
+        />
+        <Svg
+          viewBox={viewBoxSwitch(size)}
+          $rtl={rtl}
+        >
+          <polyline points='5 10.75 8.5 14.25 16 6'></polyline>
+        </Svg>
+        {!rtl && (
+          <InputLabel
+            htmlFor={id}
+            $size={size}
+          >
+            {children}
+            {isRequired && '*'}
+          </InputLabel>
+        )}
+      </span>
+      <InputError>{error}</InputError>
+    </InputWrapper>
+  )
+}
+
+export default InputCheckbox
+",{inputProps},0
+"import { ReactNode, useCallback, useContext, useEffect, useState } from 'react'
+
+import AuthContext from './AuthContext'
+import { router } from './main'
+import { ICustomer } from './shared/model/customers'
+import { AUTH_LS } from './config'
+import useAsyncState from './shared/utils/useAsyncState'
+
+export interface IAuth {
+  email: string
+  sessionToken: string
+  refreshToken: string
+}
+
+export const getStoredUser = () => {
+  const _user = localStorage.getItem(AUTH_LS)
+  if (_user) {
+    return JSON.parse(_user) as IAuth
+  }
+  return null
+}
+
+export const setStoredUser = (user: IAuth | null) => {
+  if (user) {
+    localStorage.setItem(AUTH_LS, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(AUTH_LS)
+  }
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useAsyncState<IAuth | null>(getStoredUser())
+  const [decodedUser, setDecodedUser] = useState<ICustomer | undefined>()
+  const isAuthenticated = !!user?.sessionToken
+
+  const logout = useCallback(() => {
+    setStoredUser(null)
+    setUser(null)
+    router.invalidate().finally(() => {
+      router.navigate({ to: '/login' })
+    })
+  }, [])
+
+  const login = useCallback(async (_user: IAuth) => {
+    await setUser(_user)
+    setStoredUser(_user)
+  }, [])
+
+  const updateUser = useCallback((_user: ICustomer) => {
+    setDecodedUser(_user as ICustomer)
+  }, [])
+
+  useEffect(() => {
+    const _user = getStoredUser()
+    if (_user) {
+      setUser(_user)
+    }
+  }, [])
+
+  return (
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: isAuthenticated,
+        user,
+        login,
+        logout,
+        updateUser,
+        decodedUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {",    throw new Error('useAuth must be used within an AuthProvider'),"  }
+  return context
+}
+",},1
+"import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { FaFacebookSquare } from 'react-icons/fa'
+import { FaLinkedin } from 'react-icons/fa6'
+
+import logoText from '@assets/logo_text.webp'
+import { FooterBlock, FooterCopyright, FooterWrapper } from './FooterElements'
+import { Wave } from './Wave'
+
+const Footer = () => {
+  const { t } = useTranslation()
+  const version = import.meta.env.VITE_APP_VERSION
+
+  return (
+    <FooterWrapper>
+      <Wave />
+      <FooterBlock>
+        <div className='col1'>
+          <img
+            src={logoText}
+            alt='logoFooter'
+          />
+          <p></p>
+          <p>
+            
+            <br />
+            
+          </p>
+          <p>
+            VAT-ID (NIP):
+            <br />
+            REGON:
+            <br />
+            KRS:
+          </p>
+        </div>
+
+        <div className='col2'>
+          <h2>{t('footer.followUs')}</h2>
+          <a
+            href=''",            target='_blank',"            rel='noreferrer noopener'
+          >
+            <FaFacebookSquare />
+          </a>
+          <a
+            href=''
+            target='_blank'
+            rel='noreferrer noopener'
+          >
+            <FaLinkedin />
+          </a>
+        </div>
+
+        <div className='col3'>
+          <a href='tel:'>{t('footer.phoneNumber')}</a>
+          <a href='mailto:'>{t('footer.email')}</a>
+          <Link>{t('footer.terms')}</Link>
+          <Link>{t('footer.sitemap')}</Link>
+        </div>
+      </FooterBlock>
+      {version && <FooterCopyright>ver. {version}</FooterCopyright>}
+      <FooterCopyright>© 2024 All right reserved.</FooterCopyright>
+    </FooterWrapper>
+  )
+}
+
+export default Footer
+",>,1
